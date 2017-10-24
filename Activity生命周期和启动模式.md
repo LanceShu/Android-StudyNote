@@ -20,11 +20,11 @@
 
 ###问题
 
-1. onStart和onResume、onPause和onStop从描述上来看差不多，对我们来说有什么实质的不同呢？
+问1： onStart和onResume、onPause和onStop从描述上来看差不多，对我们来说有什么实质的不同呢？
 
 答：onStart和onStop是从Activity**是否可见**这个角度来回掉的，onResume和onPause是从Activity**是否位于前台**这个角度来回调的；
 
-2. 假设当前的Activity为A，如果这时用户打开一个新的Activity B，那么B的onResume和A的onPause哪个先执行？
+问2： 假设当前的Activity为A，如果这时用户打开一个新的Activity B，那么B的onResume和A的onPause哪个先执行？
 
 答：启动Activity的请求会**由Instrumentation来处理**，然后它**通过Binder向AMS发请求**，AMS内部维护着一个**ActivityStack**并负责栈内的Activity的**状态同步**，AMS通过**ActivityThread**去**同步Activity的状态**从而完成生命周期方法的调用；**旧的Activity先onPause，然后新的Activity再启动**；
 
@@ -48,3 +48,23 @@
 2. 如果一个进程没有四大组件在执行，那么这个进程很快被系统杀死；所以一般后台工作都在Service中执行；
 
 ##Activity的启动模式：
+
+###Activity的LaunchMode
+
+1. standard（标准模式）：系统的默认模式，每次启动一个Activity都会创建一个新的实例，不管该实例是否存在；**当我们使用ApplicationContext去启动standard模式的Activity时会报错，因为非Activity类型的Context并没有所谓的任务栈**；
+2. singleTop（栈顶复用模式）：如果新的Activity位于任务栈的**栈顶**，那么此Activity不会被重新创建，同时它的**onNewIntent**方法会被回调，通过此方法的参数我们可以取出当前的请求的信息；
+3. singleTask（栈内复用模式）：这是一种**单例模式**，在这种模式下，只要Activity在一个栈中存在，那么多次启动此Activity都不会重新创建实例，系统也会回调onNewInstent方法；
+4. singleInstance（单实例模式）：是一种**加强的singleTask模式**，加强了一点，那就是具有**该模式的Activity只能单独地位于一个任务栈中**；
+
+###Activity的Flags
+1. 设定Activity的启动模式：**FLAG_ACTIVITY_NEW_TASK**（singleTask） 与 **FLAG_ACTIVITY_SINGLE_TOP**（singleTop）
+2. 标记位：**FLAG_ACTIVITY_CLEAR_TOP**（将位于它上面的activity都出栈，standard模式下连同自己以及自己上面的activity出栈，然后创建新的实例入栈） 和 **FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS**（不会出现在activity的历史列表中）；
+
+##IntentFilter的匹配规则
+1. 启动Activity的方法有两种：显式调用与隐式调用；
+2. 隐式调用需要明确地指定组件信息，隐式调用需要Intent能够匹配目标组件的IntentFilter中所设置的过滤信息；IntentFilter中的过滤信息有action（行为）、category（类别）、data（数据）；
+
+###匹配规则：
+1. action的匹配规则：action是一个**字符串**，**Intent中的action必须能够和过滤规则中的action匹配**，这里的匹配是指**action字符串的值完全一样**；一个或类别规则中有多个action，只要Intent中的action能够和过滤规则中的**任何一个action相同**即可匹配成功；action的匹配规则要求Intent中的**action存在**且**必须和过滤规则中的其中一个action相同**，区分大小写；
+2. category匹配规则：它的匹配规则与action的匹配规则不同，它要求Intent中**如果含有category**，那么**所有的category都必须和过滤规则中的其中一个category相同**；**Intent中可以没有category**；系统在调用startActivity或者startActivityForResult的时候会默认为Intent加上DEFAULT这个category，为了我们的activity能够接受隐式调用，就必须在intent-filter中指定DEFAULT这个category；
+3. data的匹配规则：data的匹配规则与action的类似，如果**过滤规则中定义了data**，那么**Intent中必须也要定义可匹配的data**；
